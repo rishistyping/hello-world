@@ -1,0 +1,30 @@
+name: Temporary Darboux environment relay
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'darboux-transfer-url.txt'
+      - '.github/workflows/darboux-transfer.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  relay:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+      - name: Relay signed asset into a public temporary release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG=darboux-transfer-relay
+          url=$(head -1 darboux-transfer-url.txt)
+          curl -L --fail --retry 3 --output /tmp/darboux-transfer-test.txt "$url"
+          grep -qx 'darboux transfer test' /tmp/darboux-transfer-test.txt
+          gh release delete "$TAG" --repo "$GITHUB_REPOSITORY" --cleanup-tag --yes || true
+          gh release create "$TAG" /tmp/darboux-transfer-test.txt \
+            --repo "$GITHUB_REPOSITORY" --title 'Temporary Darboux transfer relay' \
+            --notes 'Temporary compiler-environment relay; remove after proof development.'
